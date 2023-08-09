@@ -50,6 +50,7 @@ except Exception as e:
 
 logger.critical('IMPORTANT: THIS IS A CRITICAL MESSAGE')
 ```
+![Result](https://raw.githubusercontent.com/AGM-Studio/FancyLogger/master/Example.jpg)
 
 [![Advertisement Banner](https://2captcha.com/referral-banners/2captcha/08.gif)](https://2captcha.com/?from=19092307)
 
