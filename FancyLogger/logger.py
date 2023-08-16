@@ -112,3 +112,4 @@ class SubFancyLogger(FancyLogger):
         )
 
         self.parent = parent
+        self.propagate = False
