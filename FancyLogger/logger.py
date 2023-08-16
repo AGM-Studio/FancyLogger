@@ -1,7 +1,26 @@
 from logging import Logger, Formatter, StreamHandler
-from typing import Optional, Literal, Union, Iterable
+from string import Template
+from types import MappingProxyType
+from typing import Optional, Literal, Union, Iterable, Callable
 
 from .colors import *
+
+
+def _format(string: str, values: Union[list, tuple, dict], style: Literal['%', '{', '$']):
+    if style == '%':
+        return string % values
+
+    if style == '{':
+        if isinstance(values, (list, tuple)):
+            return string.format(*values)
+        if isinstance(values, dict):
+            return string.format(**values)
+
+    if style == '$':
+        if isinstance(values, dict):
+            return Template(string).substitute(values)
+
+    return string
 
 
 class FancyStyle:
@@ -29,8 +48,18 @@ class FancyFormatter(Formatter):
     ERROR: Union[Color, FancyStyle, Iterable] = RED
     CRITICAL: Union[Color, FancyStyle, Iterable] = BRIGHT_WHITE, RED, True, True
 
-    def __init__(self, fmt: Optional[str] = None, datefmt: Optional[str] = None, style: Literal['%', '{', '$'] = '%', validate: bool = True):
+    def __init__(self, fmt: Optional[str] = None, subname_fmt: Optional[str] = None, datefmt: Optional[str] = None, style: Literal['%', '{', '$'] = '%', validate: bool = True):
         super().__init__(fmt, datefmt, style, validate)
+
+        self.original = MappingProxyType(dict(
+            fmt=fmt,
+            subname_fmt=subname_fmt,
+            datefmt=datefmt,
+            style=style,
+            validate=validate,
+        ))
+
+        self.subname_fmt = subname_fmt or ('%(parent)s - %(name)s' if style == '%' else '$parent - $name' if style == '$' else '{parent} - {name}')
 
         self.formats = {
             10: FancyStyle.get(self.DEBUG),
@@ -45,10 +74,16 @@ class FancyFormatter(Formatter):
         formatter = self.formats.get(record.levelno, None)
         return message if formatter is None else formatter.format(message)
 
+    def copy(self):
+        return FancyFormatter(**self.original)
+
 
 class FancyLogger(Logger):
     def __init__(self, name: str, formatter: FancyFormatter):
         super().__init__(name)
+
+        self.formatter = formatter
+        self._subs = {}
 
         import sys
 
@@ -59,3 +94,21 @@ class FancyLogger(Logger):
     def setLevel(self, level):
         super(FancyLogger, self).setLevel(level)
         self.handler.setLevel(level)
+
+    def sub(self, name):
+        if name in self._subs:
+            return self._subs[name]
+
+        sub = SubFancyLogger(self, name)
+        self._subs[name] = sub
+        return sub
+
+
+class SubFancyLogger(FancyLogger):
+    def __init__(self, parent: 'FancyLogger', name: str):
+        super().__init__(
+            _format(parent.formatter.subname_fmt, {'parent': parent.name, 'name': name}, parent.formatter.original['style']),
+            parent.formatter.copy()
+        )
+
+        self.parent = parent
