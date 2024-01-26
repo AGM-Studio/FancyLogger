@@ -79,10 +79,12 @@ class FancyFormatter(Formatter):
 
 
 class FancyLogger(Logger):
-    def __init__(self, name: str, formatter: FancyFormatter):
+    defaultFormatter = FancyFormatter()
+
+    def __init__(self, name: str, formatter: FancyFormatter = None):
         super().__init__(name)
 
-        self.formatter = formatter
+        self.formatter = formatter or FancyLogger.defaultFormatter
         self._subs = {}
 
         import sys
