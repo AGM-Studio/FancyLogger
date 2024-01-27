@@ -1,7 +1,9 @@
 from logging import Logger, Formatter, StreamHandler
 from string import Template
 from types import MappingProxyType
-from typing import Optional, Literal, Union, Iterable, Callable
+from typing import Optional, Literal, Union, Iterable, Set
+
+from deprecated import deprecated
 
 from .colors import *
 
@@ -97,13 +99,20 @@ class FancyLogger(Logger):
         super(FancyLogger, self).setLevel(level)
         self.handler.setLevel(level)
 
-    def sub(self, name):
+    def getChild(self, name):
         if name in self._subs:
             return self._subs[name]
 
         sub = SubFancyLogger(self, name)
         self._subs[name] = sub
         return sub
+
+    def getFormatter(self) -> Set["FancyLogger"]:
+        return set(self._subs.values())
+
+    @deprecated(reason="Use getChild instead", version="0.3.2", action="always")
+    def sub(self, name):
+        return self.getChild(name)
 
 
 class SubFancyLogger(FancyLogger):
